@@ -1,0 +1,215 @@
+package default_package;
+
+import java_cup.runtime.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+   
+parser code {:
+    public void report_error(String message, Object info) {
+        StringBuilder m = new StringBuilder("Error");
+        if (info instanceof java_cup.runtime.Symbol) {
+            java_cup.runtime.Symbol s = ((java_cup.runtime.Symbol) info);
+            if (s.left >= 0) {                
+                m.append(" in line "+(s.left));   
+                if (s.right >= 0)                    
+                    m.append(", column "+(s.right));
+            }
+        }
+        m.append(" : "+message);
+        System.err.println(m);
+    }
+   
+    public void report_fatal_error(String message, Object info) {
+        report_error(message, info);
+        System.exit(1);
+    }
+    
+    public void production_print(Object Content) {
+      System.out.println("\nPRODUCTION_PRINT : " + Content.toString());
+    }    
+
+:};
+   
+
+   
+   
+terminal String UMINUS, MINUS, LPAREN, RPAREN, LCBRACKET, RCBRACKET, LSBRACKET, RSBRACKET, COMMA, ASSIGN, SEMI, COLON, INT, FLOAT, RETURN, DO, WHILE, FOR, IF, ELSE, SWITCH, CASE, BREAK, DEFAULT, MULDIV, PLUS, REL, EQ, ID;
+terminal Integer INTNUM;
+terminal Float FLOATNUM;
+
+non terminal Program			Program;
+non terminal DeclList       DeclList;
+non terminal FuncList       FuncList;
+non terminal Declaration    Declaration;
+non terminal IdentList      IdentList;
+non terminal Identifier     Identifier;
+non terminal Function       Function;
+non terminal ParamList      ParamList;
+non terminal Type           Type;
+non terminal CompoundStmt   CompoundStmt;
+non terminal StmtList       StmtList;
+non terminal Stmt           Stmt;
+non terminal AssignStmt     AssignStmt;
+non terminal Assign         Assign;
+non terminal CallStmt       CallStmt;
+non terminal Call           Call;
+non terminal RetStmt        RetStmt;
+non terminal OpenStmt       OpenStmt;
+non terminal ClosedStmt     ClosedStmt;
+non terminal SwitchStmt     SwitchStmt;
+non terminal CaseList       CaseList;
+non terminal CaseListFormer CaseListFormer;
+non terminal CaseListLater  CaseListLater;
+non terminal Expr           Expr;
+non terminal ArgList        ArgList;
+
+
+precedence right ASSIGN;
+precedence left EQ;
+precedence left REL;
+precedence left PLUS, MINUS;
+precedence left MULDIV;
+precedence right UMINUS;
+
+Program       ::= DeclList:r1 FuncList:r2
+                {: RESULT = new Program(new ArrayList<Absyn>(Arrays.asList(r1, r2))); :}
+				| DeclList:r1
+                {: RESULT = new Program(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| FuncList:r1
+                {: RESULT = new Program(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				|
+				{: RESULT = new Program(); :};//TODO EMPTY
+Declaration   ::= Type:r1 IdentList:r2 SEMI:r3
+                {: RESULT = new Declaration(new ArrayList<Absyn>(Arrays.asList(r1, r2, new Terminal(";", r3left, r3right)))); :};
+DeclList      ::= Declaration:r1
+                {: RESULT = new DeclList(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| DeclList:r1 Declaration:r2
+                {: RESULT = new DeclList(new ArrayList<Absyn>(Arrays.asList(r1, r2))); :};
+Function      ::= Type:r1 ID:r2 LPAREN:r3 ParamList:r4 RPAREN:r5 CompoundStmt:r6
+                {: RESULT = new Function(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal("ID",r2,r2left,r2right), new Terminal("(",r3left,r3right), r4, new Terminal(")",r5left,r5right), r6))); :}
+				| Type:r1 ID:r2 LPAREN:r3 RPAREN:r4 CompoundStmt:r5
+                {: RESULT = new Function(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal("ID",r2,r2left,r2right), new Terminal("(",r3left,r3right), new Terminal(")",r4left,r4right), r5))); :};
+FuncList      ::= Function:r1
+                {: RESULT = new FuncList(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| FuncList:r1 Function:r2
+                {: RESULT = new FuncList(new ArrayList<Absyn>(Arrays.asList(r1, r2))); :};
+Identifier    ::= ID:r1
+                {: RESULT = new Identifier(new ArrayList<Absyn>(Arrays.asList(new Terminal("ID", r1, r1left, r1right)))); :}
+				| ID:r1 LSBRACKET:r2 INTNUM:r3 RSBRACKET:r4
+				{: RESULT = new Identifier(new ArrayList<Absyn>(Arrays.asList(new Terminal("ID", r1, r1left, r1right), new Terminal("[", r2left, r2right), new Terminal("INTNUM", r3, r3left, r3right), new Terminal("]", r4left, r4right)))); :}; 
+IdentList     ::= Identifier:r1
+                {: RESULT = new IdentList(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| IdentList:r1 COMMA:r2 Identifier:r3
+                {: RESULT = new IdentList(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal(",",r2left,r2right), r3))); :};
+ParamList     ::= Type:r1 Identifier:r2
+                {: RESULT = new ParamList(new ArrayList<Absyn>(Arrays.asList(r1, r2))); :}
+				| ParamList:r1 COMMA:r2 Type:r3 Identifier:r4 
+				{: RESULT = new ParamList(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal(",", r2left, r2right), r3, r4))); :};
+Type          ::= INT:r1
+                {: RESULT = new Type(new ArrayList<Absyn>(Arrays.asList(new Terminal("int", r1left, r1right)))); :}
+				| FLOAT:r1
+                {: RESULT = new Type(new ArrayList<Absyn>(Arrays.asList(new Terminal("float",r1left, r1right)))); :};
+CompoundStmt  ::= LCBRACKET:r1 DeclList:r2 StmtList:r3 RCBRACKET:r4
+                {: RESULT = new CompoundStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("{",r1left,r1right), r2, r3, new Terminal("}",r4left,r4right)))); :}
+				| LCBRACKET:r1 StmtList:r2 RCBRACKET:r3
+				{: RESULT = new CompoundStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("{",r1left,r1right), r2, new Terminal("}",r3left,r3right)))); :};
+Stmt          ::= OpenStmt:r1
+                {: RESULT = new Stmt(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| ClosedStmt:r1
+				{: RESULT = new Stmt(new ArrayList<Absyn>(Arrays.asList(r1))); :};
+OpenStmt      ::= IF:r1 LPAREN:r2 Expr:r3 RPAREN:r4 Stmt:r5
+                {: RESULT = new OpenStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("IF",r1left,r1right), new Terminal("(",r2left,r2right), r3, new Terminal(")",r4left,r4right), r5))); :}
+				| IF:r1 LPAREN:r2 Expr:r3 RPAREN:r4 ClosedStmt:r5 ELSE:r6 OpenStmt:r7
+                {: RESULT = new OpenStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("IF",r1left,r1right), new Terminal("(",r2left,r2right), r3, new Terminal(")",r4left,r4right), r5, new Terminal("ELSE",r6left,r6right), r7))); :}
+                | WHILE:r1 LPAREN:r2 Expr:r3 RPAREN:r4 OpenStmt:r5
+                {: RESULT = new OpenStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("WHILE",r1left,r1right), new Terminal("(",r2left,r2right), r3, new Terminal(")",r4left,r4right), r5))); :}
+				| FOR:r1 LPAREN:r2 Assign:r3 SEMI:r4 Expr:r5 SEMI:r6 Assign:r7 RPAREN:r8 OpenStmt:r9
+				{: RESULT = new OpenStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("FOR",r1left,r1right), new Terminal("(",r2left,r2right), r3, new Terminal(";",r4left,r4right), r5, new Terminal(";",r6left,r6right), r7, new Terminal(")",r8left,r8right), r9))); :};
+ClosedStmt    ::= DO:r1 Stmt:r2 WHILE:r3 LPAREN:r4 Expr:r5 RPAREN:r6 SEMI:r7
+                {: RESULT = new ClosedStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("DO",r1left,r1right), r2, new Terminal("WHILE",r3left,r3right), new Terminal("(",r4left,r4right), r5, new Terminal(")",r6left,r6right), new Terminal(";",r7left,r7right)))); :}
+				| IF:r1 LPAREN:r2 Expr:r3 RPAREN:r4 ClosedStmt:r5 ELSE:r6 ClosedStmt:r7
+                {: RESULT = new ClosedStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("IF",r1left,r1right), new Terminal("(",r2left,r2right), r3, new Terminal(")",r4left,r4right), r5, new Terminal("ELSE",r6left,r6right), r7))); :}
+				| WHILE:r1 LPAREN:r2 Expr:r3 RPAREN:r4 ClosedStmt:r5
+				{: RESULT = new ClosedStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("WHILE",r1left,r1right), new Terminal("(",r2left,r2right), r3, new Terminal(")",r4left,r4right), r5))); :}
+				| FOR:r1 LPAREN:r2 Assign:r3 SEMI:r4 Expr:r5 SEMI:r6 Assign:r7 RPAREN:r8 ClosedStmt:r9
+				{: RESULT = new ClosedStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("FOR",r1left,r1right), new Terminal("(",r2left,r2right), r3, new Terminal(";",r4left,r4right), r5, new Terminal(";",r6left,r6right), r7, new Terminal(")",r8left,r8right), r9))); :}
+				| AssignStmt:r1
+				{: RESULT = new ClosedStmt(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| CallStmt:r1
+				{: RESULT = new ClosedStmt(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| RetStmt:r1
+				{: RESULT = new ClosedStmt(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| SwitchStmt:r1
+				{: RESULT = new ClosedStmt(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| CompoundStmt:r1
+				{: RESULT = new ClosedStmt(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| SEMI:r1 
+				{: RESULT = new ClosedStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal(";",r1left,r1right)))); :};
+StmtList      ::= 
+                //TODO EMPTY
+                {: RESULT = new StmtList(); :}
+				| StmtList:r1 Stmt:r2 
+				{: RESULT = new StmtList(new ArrayList<Absyn>(Arrays.asList(r1, r2))); :};
+AssignStmt    ::= Assign:r1 SEMI:r2
+				{: RESULT = new AssignStmt(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal(";",r2left,r2right)))); :}; 
+Assign        ::= ID:r1 ASSIGN:r2 Expr:r3
+				{: RESULT = new Assign(new ArrayList<Absyn>(Arrays.asList(new Terminal("ID",r1,r1left,r1right), new Terminal("=",r2left,r2right), r3))); :}
+				| ID:r1 LSBRACKET:r2 Expr:r3 RSBRACKET:r4 ASSIGN:r5 Expr:r6
+                {: RESULT = new Assign(new ArrayList<Absyn>(Arrays.asList(new Terminal("ID",r1,r1left,r1right), new Terminal("[",r2left,r2right), r3, new Terminal("]",r4left,r4right), new Terminal("=",r5left,r5right), r6))); :};
+CallStmt      ::= Call:r1 SEMI:r2 
+				{: RESULT = new CallStmt(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal(";",r2left,r2right)))); :};
+Call          ::= ID:r1 LPAREN:r2 ArgList:r3 RPAREN:r4
+				{: RESULT = new Call(new ArrayList<Absyn>(Arrays.asList(new Terminal("ID",r1,r1left,r1right), new Terminal("(",r2left,r2right), r3, new Terminal(")",r4left,r4right)))); :}
+				| ID:r1 LPAREN:r2 RPAREN:r3
+				{: RESULT = new Call(new ArrayList<Absyn>(Arrays.asList(new Terminal("ID",r1,r1left,r1right), new Terminal("(",r2left,r2right), new Terminal(")",r3left,r3right)))); :};
+RetStmt       ::= RETURN:r1 Expr:r2 SEMI:r3
+				{: RESULT = new RetStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("RETURN",r1left,r1right), r2, new Terminal(";",r3left,r3right)))); :}                
+				| RETURN:r1 SEMI:r2 // void
+                {: RESULT = new RetStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("RETURN",r1left,r1right), new Terminal(";",r2left,r2right)))); :};
+SwitchStmt    ::= SWITCH:r1 LPAREN:r2 Identifier:r3 RPAREN:r4 LCBRACKET:r5 CaseList:r6 RCBRACKET:r7
+				{: RESULT = new SwitchStmt(new ArrayList<Absyn>(Arrays.asList(new Terminal("SWITCH",r1left,r1right), new Terminal("(",r2left,r2right), r3, new Terminal(")",r4left,r4right), new Terminal("{",r5left,r5right), r6, new Terminal("}",r7left,r7right)))); :};
+CaseList      ::=
+                //TODO EMPTY|
+                {: RESULT = new CaseList(); :}
+                | CaseListFormer:r1 CaseList:r2
+				{: RESULT = new CaseList(new ArrayList<Absyn>(Arrays.asList(r1, r2))); :}
+				| CaseListLater:r1
+                {: RESULT = new CaseList(new ArrayList<Absyn>(Arrays.asList(r1))); :};
+CaseListFormer::= CASE:r1 INTNUM:r2 COLON:r3 StmtList:r4 BREAK:r5 SEMI:r6
+                {: RESULT = new CaseListFormer(new ArrayList<Absyn>(Arrays.asList(new Terminal("CASE",r1left,r1right), new Terminal("INTNUM",r2,r2left,r2right), new Terminal(":",r3left,r3right), r4, new Terminal("BREAK",r5left,r5right), new Terminal(";",r6left,r6right)))); :}
+				| CASE:r1 INTNUM:r2 COLON:r3 StmtList:r4
+                {: RESULT = new CaseListFormer(new ArrayList<Absyn>(Arrays.asList(new Terminal("CASE",r1left,r1right), new Terminal("INTNUM",r2,r2left,r2right), new Terminal(":",r3left,r3right), r4))); :};
+CaseListLater ::= DEFAULT:r1 COLON:r2 StmtList:r3 BREAK:r4 SEMI:r5
+                {: RESULT = new CaseListLater(new ArrayList<Absyn>(Arrays.asList(new Terminal("DEFAULT",r1left,r1right), new Terminal(":",r2left,r2right), r3, new Terminal("BREAK",r4left,r4right), new Terminal(";",r5left,r5right)))); :}
+				| DEFAULT:r1 COLON:r2 StmtList:r3
+				{: RESULT = new CaseListLater(new ArrayList<Absyn>(Arrays.asList(new Terminal("DEFAULT",r1left,r1right), new Terminal(":",r2left,r2right), r3))); :};
+ArgList       ::= Expr:r1
+                {: RESULT = new ArgList(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| ArgList:r1 COMMA:r2 Expr:r3
+                {: RESULT = new ArgList(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal(",",r2left,r2right), r3))); :};
+Expr          ::= MINUS:r1 Expr:r2 
+                {: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(new Terminal("-",r1left,r1right), r2))); :}
+                %prec UMINUS
+				| Expr:r1 MULDIV:r2 Expr:r3
+                {: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal(r2,r2left,r2right), r3))); :}
+				| Expr:r1 PLUS:r2 Expr:r3
+				{: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal("+",r2left,r2right), r3))); :}
+				| Expr:r1 MINUS:r2 Expr:r3
+				{: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal("-",r2left,r2right), r3))); :}
+				| Expr:r1 REL:r2 Expr:r3
+				{: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal(r2,r2left,r2right), r3))); :}
+				| Expr:r1 EQ:r2 Expr:r3
+				{: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(r1, new Terminal(r2,r2left,r2right), r3))); :}
+				| Call:r1
+				{: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(r1))); :}
+				| INTNUM:r1
+				{: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(new Terminal("INTNUM",r1,r1left,r1right)))); :}
+				| FLOATNUM:r1
+				{: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(new Terminal("FLOATNUM",r1,r1left,r1right)))); :}
+				| ID:r1
+				{: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(new Terminal("ID",r1,r1left,r1right)))); :}
+				| ID:r1 LSBRACKET:r2 Expr:r3 RSBRACKET:r4
+				{: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(new Terminal("ID",r1,r1left,r1right), new Terminal("[",r2left,r2right), r3, new Terminal("]",r4left,r4right)))); :}
+				| LPAREN:r1 Expr:r2 RPAREN:r3
+				{: RESULT = new Expr(new ArrayList<Absyn>(Arrays.asList(new Terminal("(",r1left,r1right), r2, new Terminal(")",r3left,r3right)))); :};
+   
